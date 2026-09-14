@@ -1,0 +1,44 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #root { height: 100%; }
+
+body {
+  @apply font-body text-ink-900 bg-paper-50;
+  background-image:
+    radial-gradient(rgba(31,36,48,0.025) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+h1, h2, h3 { font-family: '"Noto Serif Thai"', serif; }
+
+/* โฟกัสที่มองเห็นได้ชัดเจนสำหรับการใช้งานผ่านคีย์บอร์ด */
+:focus-visible {
+  outline: 2px solid #1B4F91;
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+}
+
+/* ===== ตราประทับสถานะ (Signature element) ===== */
+/* ได้แรงบันดาลใจจากตราประทับอนุมัติบนเอกสารกระดาษแบบเดิม
+   ที่ตอนนี้ถูกแทนที่ด้วยสถานะดิจิทัล - แต่ยังคงความรู้สึกของ "การรับรอง" ไว้ */
+.stamp {
+  @apply font-display inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold tracking-wide;
+  border: 1.5px solid currentColor;
+  border-radius: 3px;
+  transform: rotate(-3deg);
+  position: relative;
+}
+.stamp::before {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  border: 1px solid currentColor;
+  border-radius: 2px;
+  opacity: 0.5;
+  pointer-events: none;
+}
