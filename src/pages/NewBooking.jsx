@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import AppLayout from '../components/AppLayout.jsx';
 import { useAuth } from '../api/AuthContext.jsx';
 import { api } from '../api/client.js';
@@ -13,7 +13,19 @@ const PICKUP_OPTIONS = [
   'อื่น ๆ'
 ];
 
+// input type="datetime-local" รับเฉพาะ YYYY-MM-DDTHH:mm
+// ถ้าโยน ISO string จาก API เข้าไปตรง ๆ ช่องวันที่จะว่างเปล่า
+function toLocalInput(value) {
+  if (!value) return '';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return '';
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 export default function NewBooking() {
+  const { id } = useParams();          // มี id = โหมดแก้ไข, ไม่มี = โหมดยื่นคำขอใหม่
+  const isEdit = Boolean(id);
   const { token } = useAuth();
   const navigate = useNavigate();
 
@@ -38,6 +50,42 @@ export default function NewBooking() {
   const [passengers, setPassengers] = useState(['']);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [fetching, setFetching] = useState(isEdit);
+
+  useEffect(() => {
+    if (!isEdit) return;
+    let cancelled = false;
+
+    api.getBooking(token, id)
+      .then((b) => {
+        if (cancelled || !b) return;
+        const isKnownPickup = PICKUP_OPTIONS.includes(b.pickupLocation);
+        setForm({
+          purpose: b.purpose || 'SUPERVISION',
+          purposeDetail: b.purposeDetail || '',
+          destination: b.destination || '',
+          street: b.street || '',
+          province: b.province || '',
+          route: b.route || '',
+          startDateTime: toLocalInput(b.startDateTime),
+          endDateTime: toLocalInput(b.endDateTime),
+          pickupLocation: isKnownPickup ? b.pickupLocation : 'อื่น ๆ',
+          pickupLocationOther: isKnownPickup ? '' : (b.pickupLocation || ''),
+          tripType: b.tripType || 'ROUND_TRIP',
+          speakerName: b.speakerName || '',
+          speakerPhone: b.speakerPhone || '',
+          controllerName: b.controllerName || '',
+          controllerPhone: b.controllerPhone || '',
+          budgetSource: b.budgetSource || ''
+        });
+        const names = (b.passengers || []).map((p) => p.name);
+        setPassengers(names.length > 0 ? names : ['']);
+      })
+      .catch((err) => !cancelled && setError(err.message))
+      .finally(() => !cancelled && setFetching(false));
+
+    return () => { cancelled = true; };
+  }, [token, id, isEdit]);
 
   function set(key) {
     return (e) => setForm({ ...form, [key]: e.target.value });
@@ -66,12 +114,19 @@ export default function NewBooking() {
         ? form.pickupLocationOther
         : form.pickupLocation;
 
-      await api.createBooking(token, {
+      const payload = {
         ...form,
         pickupLocation,
         passengers: passengers.map((p) => p.trim()).filter(Boolean)
-      });
-      navigate('/bookings');
+      };
+
+      if (isEdit) {
+        await api.updateBooking(token, id, payload);
+        navigate(`/bookings/${id}`);
+      } else {
+        await api.createBooking(token, payload);
+        navigate('/bookings');
+      }
     } catch (err) {
       setError(err.message);
     } finally {
@@ -81,8 +136,21 @@ export default function NewBooking() {
 
   const isSpeakerPurpose = form.purpose === 'PICKUP_SPEAKER';
 
+  if (fetching) {
+    return (
+      <AppLayout title="แก้ไขคำขอใช้รถตู้">
+        <p className="text-sm text-ink-500">กำลังโหลดข้อมูล...</p>
+      </AppLayout>
+    );
+  }
+
   return (
-    <AppLayout title="ยื่นคำขอใช้รถตู้" subtitle="กรอกรายละเอียดภารกิจให้ครบถ้วนเพื่อการพิจารณาอนุมัติ">
+    <AppLayout
+      title={isEdit ? 'แก้ไขคำขอใช้รถตู้' : 'ยื่นคำขอใช้รถตู้'}
+      subtitle={isEdit
+        ? `เลขที่คำขอ #${String(id).padStart(5, '0')}`
+        : 'กรอกรายละเอียดภารกิจให้ครบถ้วนเพื่อการพิจารณาอนุมัติ'}
+    >
       <form onSubmit={handleSubmit} className="bg-paper-100 border border-ink-900/8 rounded-lg shadow-card p-7 max-w-2xl space-y-6">
 
         <Section title="วัตถุประสงค์การเดินทาง">
@@ -171,10 +239,20 @@ export default function NewBooking() {
 
         {error && <p className="text-sm text-brick-600 bg-brick-100 rounded-md px-3 py-2">{error}</p>}
 
-        <button type="submit" disabled={loading}
-          className="w-full bg-navy-800 text-white rounded-md py-2.5 text-sm font-medium hover:bg-navy-900 transition-colors disabled:opacity-60">
-          {loading ? 'กำลังส่งคำขอ...' : 'ส่งคำขอใช้รถ'}
-        </button>
+        <div className="flex items-center gap-4">
+          <button type="submit" disabled={loading}
+            className="flex-1 bg-navy-800 text-white rounded-md py-2.5 text-sm font-medium hover:bg-navy-900 transition-colors disabled:opacity-60">
+            {loading
+              ? (isEdit ? 'กำลังบันทึก...' : 'กำลังส่งคำขอ...')
+              : (isEdit ? 'บันทึกการแก้ไข' : 'ส่งคำขอใช้รถ')}
+          </button>
+          {isEdit && (
+            <button type="button" onClick={() => navigate(`/bookings/${id}`)}
+              className="text-sm text-ink-500 hover:text-ink-900 px-2">
+              ยกเลิก
+            </button>
+          )}
+        </div>
       </form>
     </AppLayout>
   );
