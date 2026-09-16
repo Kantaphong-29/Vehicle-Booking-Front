@@ -24,6 +24,7 @@ export default function App() {
       <Route path="/" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
       <Route path="/new" element={<PrivateRoute><NewBooking /></PrivateRoute>} />
       <Route path="/bookings" element={<PrivateRoute><BookingList /></PrivateRoute>} />
+      <Route path="/bookings/:id/edit" element={<PrivateRoute><NewBooking /></PrivateRoute>} />
       <Route path="/bookings/:id" element={<PrivateRoute><BookingDetail /></PrivateRoute>} />
       <Route path="/bookings/:id/print" element={<PrivateRoute><BookingPrint /></PrivateRoute>} />
       <Route path="/approvals" element={<PrivateRoute><Approvals /></PrivateRoute>} />
