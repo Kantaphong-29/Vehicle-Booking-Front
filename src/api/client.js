@@ -77,4 +77,11 @@ export const api = {
   getVehicleCalendar: (token, startDate, endDate) => request(`/bookings/calendar?start=${startDate}&end=${endDate}`, { token }),
 
   getAdminStats: (token) => request('/bookings/stats', { token }),
+
+  updateBooking: (token, id, data) =>
+    request(`/bookings/${id}`, {
+      method: 'PATCH',
+      token,
+      body: data,
+    }),
 };

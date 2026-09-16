@@ -205,15 +205,25 @@ export default function BookingDetail() {
           </p>
         )}
 
-        {/* USER: ยกเลิกคำขอของตัวเอง */}
+        {/* USER: แก้ไข/ยกเลิกคำขอของตัวเอง */}
         {isOwner && ["PENDING", "APPROVED"].includes(booking.status) && (
-          <button
-            onClick={handleCancel}
-            disabled={busy}
-            className="text-sm text-brick-600 font-medium hover:underline disabled:opacity-60"
-          >
-            ยกเลิกคำขอนี้
-          </button>
+          <div className="flex items-center gap-4">
+            {booking.status === "PENDING" && (
+              <Link
+                to={`/bookings/${booking.id}/edit`}
+                className="text-sm text-navy-700 font-medium hover:underline"
+              >
+                แก้ไขคำขอ
+              </Link>
+            )}
+            <button
+              onClick={handleCancel}
+              disabled={busy}
+              className="text-sm text-brick-600 font-medium hover:underline disabled:opacity-60"
+            >
+              ยกเลิกคำขอนี้
+            </button>
+          </div>
         )}
 
         {/* STAFF/ADMIN: อนุมัติ/ปฏิเสธ */}
